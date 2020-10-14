@@ -244,6 +244,15 @@ import java.nio.charset.UnsupportedCharsetException;
  *
  * Please refer to {@link ByteBufInputStream} and
  * {@link ByteBufOutputStream}.
+ *
+ * {@link ByteBufHolder} bytebuf的容器，可用于封装自定义的holder，详情见里面的注释
+ * {@link ByteBufAllocator} 定义了一系列分配缓冲池的方法，总共有四种，详见里面注解
+ * {@link ByteBufUtil} 提供一系列静态的用于操作bytebuf对象的方法
+ *
+ * 注意点：
+ *      1. 动态扩容的方式
+ *      2. readindex和writeindex的使用
+ *      3. discard的缓冲区的回收策略
  */
 public abstract class ByteBuf implements ReferenceCounted, Comparable<ByteBuf> {
 

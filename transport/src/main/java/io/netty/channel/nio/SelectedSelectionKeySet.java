@@ -21,6 +21,12 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
+/**
+ * 对应的是selector和channel的对应关系
+ * 一个SelectionKey键表示了一个特定的通道对象和一个特定的选择器对象之间的注册关系。
+ *
+ * 选择器与通道对象注册之后就会有selectionkey产生，并且在通道关闭或者选择器关闭的时候失效
+ */
 final class SelectedSelectionKeySet extends AbstractSet<SelectionKey> {
 
     SelectionKey[] keys;

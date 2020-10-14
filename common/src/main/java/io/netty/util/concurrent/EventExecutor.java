@@ -16,11 +16,15 @@
 package io.netty.util.concurrent;
 
 /**
- * The {@link EventExecutor} is a special {@link EventExecutorGroup} which comes
- * with some handy methods to see if a {@link Thread} is executed in a event loop.
- * Besides this, it also extends the {@link EventExecutorGroup} to allow for a generic
+ * The EventExecutor is a special EventExecutorGroup which comes
+ * with some handy methods to see if a  Thread is executed in a event loop.
+ * Besides this, it also extends the EventExecutorGroup to allow for a generic
  * way to access methods.
  *
+ * EventExecutor是一个特殊的EventExecutorGroup，它带有一些方便的方法来查看线程是否在事件循环中执行。
+ * 除此之外，它还扩展了EventExecutorGroup以允许用一种通用方法来访问方法。
+ *
+ * 暂时理解为一个拥有一些特定方法的事件调度线程池
  */
 public interface EventExecutor extends EventExecutorGroup {
 
@@ -32,6 +36,7 @@ public interface EventExecutor extends EventExecutorGroup {
 
     /**
      * Return the {@link EventExecutorGroup} which is the parent of this {@link EventExecutor},
+     * 返回{@link EventExecutorGroup}，它是此{@link EventExecutor}的父级，
      */
     EventExecutorGroup parent();
 
@@ -57,9 +62,13 @@ public interface EventExecutor extends EventExecutorGroup {
     <V> ProgressivePromise<V> newProgressivePromise();
 
     /**
-     * Create a new {@link Future} which is marked as succeeded already. So {@link Future#isSuccess()}
-     * will return {@code true}. All {@link FutureListener} added to it will be notified directly. Also
+     * Create a new Future which is marked as succeeded already. So Future#isSuccess()
+     * will return  true. All FutureListener added to it will be notified directly. Also
      * every call of blocking methods will just return without blocking.
+     * 创建一个已标记为成功的新Future。
+     * 因此，Future＃isSuccess（）将返回true。
+     * 所有添加到它里面的FutureListener将会被直接通知。
+     * 同样，每次调用阻塞方法都将返回而不阻塞。
      */
     <V> Future<V> newSucceededFuture(V result);
 

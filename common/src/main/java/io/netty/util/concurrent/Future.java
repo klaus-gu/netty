@@ -47,10 +47,10 @@ public interface Future<V> extends java.util.concurrent.Future<V> {
     Throwable cause();
 
     /**
-     * Adds the specified listener to this future.  The
-     * specified listener is notified when this future is
-     * {@linkplain #isDone() done}.  If this future is already
-     * completed, the specified listener is notified immediately.
+     * Adds the specified listener to this future.
+     * 将指定的侦听器添加到此将来。
+     * The specified listener is notified when this future is {@linkplain #isDone() done}.
+     * If this future is already completed, the specified listener is notified immediately.
      */
     Future<V> addListener(GenericFutureListener<? extends Future<? super V>> listener);
 

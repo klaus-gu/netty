@@ -33,12 +33,16 @@ import java.util.concurrent.ThreadFactory;
 
 /**
  * {@link MultithreadEventLoopGroup} implementations which is used for NIO {@link Selector} based {@link Channel}s.
+ * {@link MultithreadEventLoopGroup}实现，用于基于NIO {@link Selector}的{@link Channel}。
  */
 public class NioEventLoopGroup extends MultithreadEventLoopGroup {
 
     /**
      * Create a new instance using the default number of threads, the default {@link ThreadFactory} and
      * the {@link SelectorProvider} which is returned by {@link SelectorProvider#provider()}.
+     *
+     * 使用默认的线程数，默认的{@link ThreadFactory}和
+     * {@link SelectorProvider＃provider（）}返回的{@link SelectorProvider}。
      */
     public NioEventLoopGroup() {
         this(0);
@@ -47,6 +51,9 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
     /**
      * Create a new instance using the specified number of threads, {@link ThreadFactory} and the
      * {@link SelectorProvider} which is returned by {@link SelectorProvider#provider()}.
+     *
+     * 使用指定数量的线程{@link ThreadFactory}和
+     * {@link SelectorProvider＃provider（）}返回的{@link SelectorProvider}创建一个新实例。
      */
     public NioEventLoopGroup(int nThreads) {
         this(nThreads, (Executor) null);
@@ -139,9 +146,19 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
         }
     }
 
+    /**
+     *
+     * @param executor
+     * @param args  "selectorProvider, selectStrategyFactory, RejectedExecutionHandlers.reject()";
+     *              由前传递过来的args
+     * @return
+     * @throws Exception
+     */
     @Override
     protected EventLoop newChild(Executor executor, Object... args) throws Exception {
-        EventLoopTaskQueueFactory queueFactory = args.length == 4 ? (EventLoopTaskQueueFactory) args[3] : null;
+        // args.length = 3 , queueFactory = null ()
+        EventLoopTaskQueueFactory queueFactory =
+                args.length == 4 ? (EventLoopTaskQueueFactory) args[3] : null;
         return new NioEventLoop(this, executor, (SelectorProvider) args[0],
             ((SelectStrategyFactory) args[1]).newSelectStrategy(), (RejectedExecutionHandler) args[2], queueFactory);
     }

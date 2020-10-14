@@ -42,9 +42,19 @@ import java.util.NoSuchElementException;
 import static io.netty.util.internal.ObjectUtil.checkNotNull;
 
 /**
- * A virtual buffer which shows multiple buffers as a single merged buffer.  It is recommended to use
- * {@link ByteBufAllocator#compositeBuffer()} or {@link Unpooled#wrappedBuffer(ByteBuf...)} instead of calling the
- * constructor explicitly.
+ * A virtual buffer which shows multiple buffers as a single merged buffer.
+ * 一个虚拟缓冲区，它将多个缓冲区显示为单个合并缓冲区。
+ * It is recommended to use {@link ByteBufAllocator#compositeBuffer()}
+ * or {@link Unpooled#wrappedBuffer(ByteBuf...)} instead of calling the constructor explicitly.
+ * 建议使用{@link ByteBufAllocator＃compositeBuffer（）}或{@link Unpooled＃wrappedBuffer（ByteBuf ...）}而不是显式调用构造函数。
+ *
+ * 允许将多个bytebuf的实例组装到一起，形成一个统一的视图，类似于数据库的视图
+ *
+ * 场景：
+ * 例如：某个协议pojo对象包含两个部分：消息头和消息体。他们都有bytebuf对象。当需要对消息进行编码的时候需要进行整合。
+ * 实现方式：{@link Component}定义一个component类型的集合，实际上component就是bytebuf的包装实现类
+ * 他聚合了bytebuf对象，维护了在集合中的位置偏移量信息等。
+ *
  */
 public class CompositeByteBuf extends AbstractReferenceCountedByteBuf implements Iterable<ByteBuf> {
 

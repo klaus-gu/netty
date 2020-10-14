@@ -19,6 +19,12 @@ import io.netty.util.ReferenceCounted;
 
 /**
  * A packet which is send or receive.
+ * 发送或接收的数据包。
+ * 是{@link ByteBuf}的容器，
+ * 例如：在http协议的请求消息和应答消息中都可以携带消息体，这个消息体在{@link java.nio.ByteBuffer}中就是那个ByteBuffer
+ * 对象，在netty中就是ByteBuf对象，由于不同的消息协议消息体可以包含不同的协议字段和功能，因此需要对bytebuf进行包装
+ * 和抽象，不通的子类可以有不同的实现。
+ * 使用者继承{@link ByteBufHolder}就可以按需封装自己的实现。
  */
 public interface ByteBufHolder extends ReferenceCounted {
 

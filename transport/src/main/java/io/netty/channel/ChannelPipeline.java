@@ -37,11 +37,11 @@ import java.util.NoSuchElementException;
  * interact with each other.
  *
  * <h3>Creation of a pipeline</h3>
- *
+ * <p>
  * Each channel has its own pipeline and it is created automatically when a new channel is created.
  *
  * <h3>How an event flows in a pipeline</h3>
- *
+ * <p>
  * The following diagram describes how I/O events are processed by {@link ChannelHandler}s in a {@link ChannelPipeline}
  * typically. An I/O event is handled by either a {@link ChannelInboundHandler} or a {@link ChannelOutboundHandler}
  * and be forwarded to its closest handler by calling the event propagation methods defined in
@@ -117,45 +117,45 @@ import java.util.NoSuchElementException;
  * the evaluation of certain handlers to shorten the stack depth:
  * <ul>
  * <li>3 and 4 don't implement {@link ChannelInboundHandler}, and therefore the actual evaluation order of an inbound
- *     event will be: 1, 2, and 5.</li>
+ * event will be: 1, 2, and 5.</li>
  * <li>1 and 2 don't implement {@link ChannelOutboundHandler}, and therefore the actual evaluation order of a
- *     outbound event will be: 5, 4, and 3.</li>
+ * outbound event will be: 5, 4, and 3.</li>
  * <li>If 5 implements both {@link ChannelInboundHandler} and {@link ChannelOutboundHandler}, the evaluation order of
- *     an inbound and a outbound event could be 125 and 543 respectively.</li>
+ * an inbound and a outbound event could be 125 and 543 respectively.</li>
  * </ul>
  *
  * <h3>Forwarding an event to the next handler</h3>
- *
+ * <p>
  * As you might noticed in the diagram shows, a handler has to invoke the event propagation methods in
  * {@link ChannelHandlerContext} to forward an event to its next handler.  Those methods include:
  * <ul>
  * <li>Inbound event propagation methods:
- *     <ul>
- *     <li>{@link ChannelHandlerContext#fireChannelRegistered()}</li>
- *     <li>{@link ChannelHandlerContext#fireChannelActive()}</li>
- *     <li>{@link ChannelHandlerContext#fireChannelRead(Object)}</li>
- *     <li>{@link ChannelHandlerContext#fireChannelReadComplete()}</li>
- *     <li>{@link ChannelHandlerContext#fireExceptionCaught(Throwable)}</li>
- *     <li>{@link ChannelHandlerContext#fireUserEventTriggered(Object)}</li>
- *     <li>{@link ChannelHandlerContext#fireChannelWritabilityChanged()}</li>
- *     <li>{@link ChannelHandlerContext#fireChannelInactive()}</li>
- *     <li>{@link ChannelHandlerContext#fireChannelUnregistered()}</li>
- *     </ul>
+ * <ul>
+ * <li>{@link ChannelHandlerContext#fireChannelRegistered()}</li>
+ * <li>{@link ChannelHandlerContext#fireChannelActive()}</li>
+ * <li>{@link ChannelHandlerContext#fireChannelRead(Object)}</li>
+ * <li>{@link ChannelHandlerContext#fireChannelReadComplete()}</li>
+ * <li>{@link ChannelHandlerContext#fireExceptionCaught(Throwable)}</li>
+ * <li>{@link ChannelHandlerContext#fireUserEventTriggered(Object)}</li>
+ * <li>{@link ChannelHandlerContext#fireChannelWritabilityChanged()}</li>
+ * <li>{@link ChannelHandlerContext#fireChannelInactive()}</li>
+ * <li>{@link ChannelHandlerContext#fireChannelUnregistered()}</li>
+ * </ul>
  * </li>
  * <li>Outbound event propagation methods:
- *     <ul>
- *     <li>{@link ChannelHandlerContext#bind(SocketAddress, ChannelPromise)}</li>
- *     <li>{@link ChannelHandlerContext#connect(SocketAddress, SocketAddress, ChannelPromise)}</li>
- *     <li>{@link ChannelHandlerContext#write(Object, ChannelPromise)}</li>
- *     <li>{@link ChannelHandlerContext#flush()}</li>
- *     <li>{@link ChannelHandlerContext#read()}</li>
- *     <li>{@link ChannelHandlerContext#disconnect(ChannelPromise)}</li>
- *     <li>{@link ChannelHandlerContext#close(ChannelPromise)}</li>
- *     <li>{@link ChannelHandlerContext#deregister(ChannelPromise)}</li>
- *     </ul>
+ * <ul>
+ * <li>{@link ChannelHandlerContext#bind(SocketAddress, ChannelPromise)}</li>
+ * <li>{@link ChannelHandlerContext#connect(SocketAddress, SocketAddress, ChannelPromise)}</li>
+ * <li>{@link ChannelHandlerContext#write(Object, ChannelPromise)}</li>
+ * <li>{@link ChannelHandlerContext#flush()}</li>
+ * <li>{@link ChannelHandlerContext#read()}</li>
+ * <li>{@link ChannelHandlerContext#disconnect(ChannelPromise)}</li>
+ * <li>{@link ChannelHandlerContext#close(ChannelPromise)}</li>
+ * <li>{@link ChannelHandlerContext#deregister(ChannelPromise)}</li>
+ * </ul>
  * </li>
  * </ul>
- *
+ * <p>
  * and the following example shows how the event propagation is usually done:
  *
  * <pre>
@@ -188,7 +188,7 @@ import java.util.NoSuchElementException;
  * <li>Protocol Encoder - translates a Java object into binary data.</li>
  * <li>Business Logic Handler - performs the actual business logic (e.g. database access).</li>
  * </ol>
- *
+ * <p>
  * and it could be represented as shown in the following example:
  *
  * <pre>
@@ -207,7 +207,7 @@ import java.util.NoSuchElementException;
  * // need to specify a group.
  * pipeline.addLast(group, "handler", new MyBusinessLogicHandler());
  * </pre>
- *
+ * <p>
  * Be aware that while using {@link DefaultEventLoopGroup} will offload the operation from the {@link EventLoop} it will
  * still process tasks in a serial fashion per {@link ChannelHandlerContext} and so guarantee ordering. Due the ordering
  * it may still become a bottle-neck. If ordering is not a requirement for your use-case you may want to consider using
@@ -218,6 +218,11 @@ import java.util.NoSuchElementException;
  * A {@link ChannelHandler} can be added or removed at any time because a {@link ChannelPipeline} is thread safe.
  * For example, you can insert an encryption handler when sensitive information is about to be exchanged, and remove it
  * after the exchange.
+ */
+
+/**
+ * 对于事件的处理链，责任链模式，输入/输出会有各自适合的的handler来处理到来的时事件
+ * 通过继承iterable来实现链式的调用
  */
 public interface ChannelPipeline
         extends ChannelInboundInvoker, ChannelOutboundInvoker, Iterable<Entry<String, ChannelHandler>> {
