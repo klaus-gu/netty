@@ -245,8 +245,12 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         synchronized (this) {
             checkMultiplicity(handler);
             name = filterName(name, handler);
+            // 通过名字获取ctx实例
             ctx = getContextOrDie(baseName);
 
+            /**
+             * 新增ChannelHandler
+             */
             newCtx = newContext(group, name, handler);
 
             addBefore0(ctx, newCtx);
@@ -592,6 +596,10 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         oldCtx.next = newCtx;
     }
 
+    /**
+     * 对添加的{@link ChannelHandlerContext}做重复性校验
+     * @param handler
+     */
     private static void checkMultiplicity(ChannelHandler handler) {
         if (handler instanceof ChannelHandlerAdapter) {
             ChannelHandlerAdapter h = (ChannelHandlerAdapter) handler;
@@ -973,6 +981,12 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         return tail.bind(localAddress, promise);
     }
 
+    /**
+     * 最终调用了HeadHandler的connect来通过UnSafe调用了通道的connect（）
+     * @param remoteAddress
+     * @param promise
+     * @return
+     */
     @Override
     public final ChannelFuture connect(SocketAddress remoteAddress, ChannelPromise promise) {
         return tail.connect(remoteAddress, promise);

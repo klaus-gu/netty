@@ -174,6 +174,13 @@ import java.lang.annotation.Target;
  * {@link ChannelPipeline} to find out more about inbound and outbound operations,
  * what fundamental differences they have, how they flow in a  pipeline,  and how to handle
  * the operation in your application.
+ *
+ * 负责对I/O事件或I/O操作进行拦截和处理，它可以选择性的拦截和处理自己感兴趣的事件，也可以通过透传和终止事件的传递
+ * 基于ChannelHandler接口，用户可以方便的进行业务逻辑定制，例如打印日志，统一封装异常信息，性能统计和消息编解码等。
+ *
+ * 支持的注解
+ * Sharable：多个ChannelPipeLine共用同一个ChannelHandler。
+ * Skip：被Skip注解的方法不会被调用，直接忽略掉
  */
 public interface ChannelHandler {
 

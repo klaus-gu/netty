@@ -42,6 +42,8 @@ import java.util.Map;
 /**
  * A {@link io.netty.channel.socket.ServerSocketChannel} implementation which uses
  * NIO selector based implementation to accept new connections.
+ * 对于{@link NioServerSocketChannel}，他的读写操作就是接受客户端连接，创建{@link NioSocketChannel}对象
+ * 详见 {@link NioServerSocketChannel  #doReadMessages(List<Object> buf)}方法
  */
 public class NioServerSocketChannel extends AbstractNioMessageChannel
                              implements io.netty.channel.socket.ServerSocketChannel {
@@ -51,6 +53,11 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
 
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(NioServerSocketChannel.class);
 
+    /**
+     * 通过{@link ServerSocketChannel #open()}打开新的ServerSocketChannel
+     * @param provider
+     * @return
+     */
     private static ServerSocketChannel newSocket(SelectorProvider provider) {
         try {
             /**
@@ -66,6 +73,9 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
         }
     }
 
+    /**
+     * 用于配置{@link io.netty.channel.socket.ServerSocketChannel}的TCP参数。
+     */
     private final ServerSocketChannelConfig config;
 
     /**
@@ -142,18 +152,24 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
         javaChannel().close();
     }
 
+    /**
+     * 主要用于接受客户端的连接
+     * @param buf
+     * @return
+     * @throws Exception
+     */
     @Override
     protected int doReadMessages(List<Object> buf) throws Exception {
+        // 接受新的客户端连接
         SocketChannel ch = SocketUtils.accept(javaChannel());
-
         try {
             if (ch != null) {
+                // 将客户端连接加入buf，最后返回1，表示服务端消息读取成功。
                 buf.add(new NioSocketChannel(this, ch));
                 return 1;
             }
         } catch (Throwable t) {
             logger.warn("Failed to create a new channel from an accepted socket.", t);
-
             try {
                 ch.close();
             } catch (Throwable t2) {

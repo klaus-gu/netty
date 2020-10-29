@@ -145,7 +145,7 @@ public final class ChannelOutboundBuffer {
                 flushedEntry = entry;
             }
             do {
-                flushed ++;
+                flushed++;
                 if (!entry.promise.setUncancellable()) {
                     // Was cancelled so make sure we free up memory and notify about the freed bytes
                     int pending = entry.cancel();
@@ -224,6 +224,7 @@ public final class ChannelOutboundBuffer {
 
     /**
      * Return the current message flush progress.
+     *
      * @return {@code 0} if nothing was flushed before for the current message or there is no current message
      */
     public long currentProgress() {
@@ -316,7 +317,7 @@ public final class ChannelOutboundBuffer {
     }
 
     private void removeEntry(Entry e) {
-        if (-- flushed == 0) {
+        if (--flushed == 0) {
             // processed everything
             flushedEntry = null;
             if (e == tailEntry) {
@@ -333,7 +334,10 @@ public final class ChannelOutboundBuffer {
      * This operation assumes all messages in this buffer is {@link ByteBuf}.
      */
     public void removeBytes(long writtenBytes) {
-        for (;;) {
+        for (; ; ) {
+            /**
+             * 从ChannelOutBoundBuffer弹出第一条发送的ByteBuf
+             */
             Object msg = current();
             if (!(msg instanceof ByteBuf)) {
                 assert writtenBytes == 0;
@@ -341,23 +345,43 @@ public final class ChannelOutboundBuffer {
             }
 
             final ByteBuf buf = (ByteBuf) msg;
+            /**
+             * 获取读索引和可读字节数
+             */
             final int readerIndex = buf.readerIndex();
+            // 可读字节数=写索引-读索引
             final int readableBytes = buf.writerIndex() - readerIndex;
 
+            /**
+             * 这里的writtenBytes指代的是已经发送到SocketChannel的字节数
+             */
+            /**
+             * 可读字节数小于等于已发送字节数说明当前的bytebuf已经完全被发送出去了
+             */
             if (readableBytes <= writtenBytes) {
                 if (writtenBytes != 0) {
+                    // 更新ChannelOutboundBuffer的发送进度信息
                     progress(readableBytes);
                     writtenBytes -= readableBytes;
                 }
                 remove();
+
+                /**
+                 * 可读字节数大于已写出字节数，说明出现了半包问题
+                 */
             } else { // readableBytes > writtenBytes
                 if (writtenBytes != 0) {
+                    // 更新可读索引，更新更新ChannelOutboundBuffer的发送进度信息
+                    // 将读索引后移writtenBytes个位置
                     buf.readerIndex(readerIndex + (int) writtenBytes);
                     progress(writtenBytes);
                 }
                 break;
             }
         }
+        /**
+         *
+         */
         clearNioBuffers();
     }
 
@@ -394,10 +418,15 @@ public final class ChannelOutboundBuffer {
      * {@link AbstractChannel#doWrite(ChannelOutboundBuffer)}.
      * Refer to {@link NioSocketChannel#doWrite(ChannelOutboundBuffer)} for an example.
      * </p>
-     * @param maxCount The maximum amount of buffers that will be added to the return value.
+     *
+     * @param maxCount 缓冲区数量The maximum amount of buffers that will be added to the return value.
      * @param maxBytes A hint toward the maximum number of bytes to include as part of the return value. Note that this
      *                 value maybe exceeded because we make a best effort to include at least 1 {@link ByteBuffer}
      *                 in the return value to ensure write progress is made.
+     *                 提示要包含在最大字节数中作为返回值的一部分。
+     *                 请注意，可能会超过此值，因为我们会尽最大努力在返回值中包含至少1 {@link ByteBuffer}以确保写入进度。
+     *                 <p>
+     *                 将缓冲区消息分成maxCount个ByteBuffer，每个buf最多maxBytes个字节
      */
     public ByteBuffer[] nioBuffers(int maxCount, long maxBytes) {
         assert maxCount > 0;
@@ -552,7 +581,7 @@ public final class ChannelOutboundBuffer {
 
     private void setUserDefinedWritability(int index) {
         final int mask = ~writabilityMask(index);
-        for (;;) {
+        for (; ; ) {
             final int oldValue = unwritable;
             final int newValue = oldValue & mask;
             if (UNWRITABLE_UPDATER.compareAndSet(this, oldValue, newValue)) {
@@ -566,7 +595,7 @@ public final class ChannelOutboundBuffer {
 
     private void clearUserDefinedWritability(int index) {
         final int mask = writabilityMask(index);
-        for (;;) {
+        for (; ; ) {
             final int oldValue = unwritable;
             final int newValue = oldValue | mask;
             if (UNWRITABLE_UPDATER.compareAndSet(this, oldValue, newValue)) {
@@ -586,7 +615,7 @@ public final class ChannelOutboundBuffer {
     }
 
     private void setWritable(boolean invokeLater) {
-        for (;;) {
+        for (; ; ) {
             final int oldValue = unwritable;
             final int newValue = oldValue & ~1;
             if (UNWRITABLE_UPDATER.compareAndSet(this, oldValue, newValue)) {
@@ -599,7 +628,7 @@ public final class ChannelOutboundBuffer {
     }
 
     private void setUnwritable(boolean invokeLater) {
-        for (;;) {
+        for (; ; ) {
             final int oldValue = unwritable;
             final int newValue = oldValue | 1;
             if (UNWRITABLE_UPDATER.compareAndSet(this, oldValue, newValue)) {
@@ -656,7 +685,7 @@ public final class ChannelOutboundBuffer {
 
         try {
             inFail = true;
-            for (;;) {
+            for (; ; ) {
                 if (!remove0(cause, notify)) {
                     break;
                 }

@@ -96,21 +96,25 @@ public interface Channel extends AttributeMap, ChannelOutboundInvoker, Comparabl
 
     /**
      * Returns the configuration of this channel.
+     * 获取当前channel的配置信息
      */
     ChannelConfig config();
 
     /**
      * Returns {@code true} if the {@link Channel} is open and may get active later
+     * 判断当前通道是否已经打开
      */
     boolean isOpen();
 
     /**
      * Returns {@code true} if the {@link Channel} is registered with an {@link EventLoop}.
+     * 判断当前通达是否已经注册到eventloop上面
      */
     boolean isRegistered();
 
     /**
      * Return {@code true} if the {@link Channel} is active and so connected.
+     * 判断当前通道是否已经处于激活状态
      */
     boolean isActive();
 
@@ -154,20 +158,25 @@ public interface Channel extends AttributeMap, ChannelOutboundInvoker, Comparabl
 
     /**
      * Returns {@code true} if and only if the I/O thread will perform the
-     * requested write operation immediately.  Any write requests made when
-     * this method returns {@code false} are queued until the I/O thread is
+     * requested write operation immediately.
+     * 当且仅当I/O线程将立即执行请求的写操作时，返回true。
+     * Any write requests made when this method returns {@code false} are queued until the I/O thread is
      * ready to process the queued write requests.
+     * 当此方法返回{@code false}时发出的所有写请求都将排队，直到I / O线程准备好处理排队的写请求为止。
      */
     boolean isWritable();
 
     /**
      * Get how many bytes can be written until {@link #isWritable()} returns {@code false}.
+     * 获取可写入的字节数直到{@link #isWritable()}返回false
      * This quantity will always be non-negative. If {@link #isWritable()} is {@code false} then 0.
+     * 这个数值永远都是非负数。如果{@link #isWritable()}是false，则数值为0。
      */
     long bytesBeforeUnwritable();
 
     /**
      * Get how many bytes must be drained from underlying buffers until {@link #isWritable()} returns {@code true}.
+     * 获取必须从底层缓冲区中耗尽多少字节，直到{@link #isWritable（）}返回{@code true}为止。
      * This quantity will always be non-negative. If {@link #isWritable()} is {@code true} then 0.
      */
     long bytesBeforeWritable();
@@ -187,6 +196,14 @@ public interface Channel extends AttributeMap, ChannelOutboundInvoker, Comparabl
      */
     ByteBufAllocator alloc();
 
+    /**
+     * 从当前的channel中读取数据到第一个inbound缓冲区，如果数据被成功读取，则触发
+     * {@link ChannelHandler #channelRead(ChannelHandlerContext,obj)}事件，
+     * 读取操作api操作完成之后，紧接着会触发{@link ChannelHandler channelReadComplete()}事件，
+     * 这样业务的channelhandler可以决定是否需要继续读取数据，如果已经有读操作请求被挂起，则后续的读操作会被忽略
+     *
+     * @return
+     */
     @Override
     Channel read();
 

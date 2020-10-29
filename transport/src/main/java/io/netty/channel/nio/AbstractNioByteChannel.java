@@ -17,14 +17,7 @@ package io.netty.channel.nio;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelConfig;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelMetadata;
-import io.netty.channel.ChannelOutboundBuffer;
-import io.netty.channel.ChannelPipeline;
-import io.netty.channel.FileRegion;
-import io.netty.channel.RecvByteBufAllocator;
+import io.netty.channel.*;
 import io.netty.channel.internal.ChannelUtils;
 import io.netty.channel.socket.ChannelInputShutdownEvent;
 import io.netty.channel.socket.ChannelInputShutdownReadComplete;
@@ -44,7 +37,7 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
     private static final ChannelMetadata METADATA = new ChannelMetadata(false, 16);
     private static final String EXPECTED_TYPES =
             " (expected: " + StringUtil.simpleClassName(ByteBuf.class) + ", " +
-            StringUtil.simpleClassName(FileRegion.class) + ')';
+                    StringUtil.simpleClassName(FileRegion.class) + ')';
 
     private final Runnable flushTask = new Runnable() {
         @Override
@@ -59,8 +52,8 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
     /**
      * Create a new instance
      *
-     * @param parent            the parent {@link Channel} by which this instance was created. May be {@code null}
-     * @param ch                the underlying {@link SelectableChannel} on which it operates
+     * @param parent the parent {@link Channel} by which this instance was created. May be {@code null}
+     * @param ch     the underlying {@link SelectableChannel} on which it operates
      */
     protected AbstractNioByteChannel(Channel parent, SelectableChannel ch) {
         super(parent, ch, SelectionKey.OP_READ);
@@ -111,7 +104,7 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
         }
 
         private void handleReadException(ChannelPipeline pipeline, ByteBuf byteBuf, Throwable cause, boolean close,
-                RecvByteBufAllocator.Handle allocHandle) {
+                                         RecvByteBufAllocator.Handle allocHandle) {
             if (byteBuf != null) {
                 if (byteBuf.isReadable()) {
                     readPending = false;
@@ -191,15 +184,16 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
 
     /**
      * Write objects to the OS.
+     *
      * @param in the collection which contains objects to write.
      * @return The value that should be decremented from the write quantum which starts at
      * {@link ChannelConfig#getWriteSpinCount()}. The typical use cases are as follows:
      * <ul>
-     *     <li>0 - if no write was attempted. This is appropriate if an empty {@link ByteBuf} (or other empty content)
-     *     is encountered</li>
-     *     <li>1 - if a single call to write data was made to the OS</li>
-     *     <li>{@link ChannelUtils#WRITE_STATUS_SNDBUF_FULL} - if an attempt to write data was made to the OS, but no
-     *     data was accepted</li>
+     * <li>0 - if no write was attempted. This is appropriate if an empty {@link ByteBuf} (or other empty content)
+     * is encountered</li>
+     * <li>1 - if a single call to write data was made to the OS</li>
+     * <li>{@link ChannelUtils#WRITE_STATUS_SNDBUF_FULL} - if an attempt to write data was made to the OS, but no
+     * data was accepted</li>
      * </ul>
      * @throws Exception if an I/O exception occurs during write.
      */
@@ -213,6 +207,12 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
     }
 
     private int doWriteInternal(ChannelOutboundBuffer in, Object msg) throws Exception {
+        /**
+         * 首先判断需要发送的消息是否是ByteBuf类型，如果是，则进行强转，
+         * 判断当前的消息的可读字节数是否是0，如果是0，说明该消息不可读，
+         * 需要丢弃。从环形发送数组中删除该消息，继续循环处理其他的消息。
+         */
+
         if (msg instanceof ByteBuf) {
             ByteBuf buf = (ByteBuf) msg;
             if (!buf.isReadable()) {
@@ -220,9 +220,15 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
                 return 0;
             }
 
+            // 将当前的buf数据写入底层的Channel中，返回的是发送总数
+            // 所以这里的localFlushedAmount是指本次发送的字节数
             final int localFlushedAmount = doWriteBytes(buf);
             if (localFlushedAmount > 0) {
+                // Notify the {@link ChannelPromise
+                //} of the current message about writing progress.
+                // 更新发送进度信息
                 in.progress(localFlushedAmount);
+                // 若发送完毕，则说明写指针已经回到初始点，也就是说readindex也回到了原点。
                 if (!buf.isReadable()) {
                     in.remove();
                 }
@@ -252,18 +258,24 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
 
     @Override
     protected void doWrite(ChannelOutboundBuffer in) throws Exception {
+        // 消息发送完必须要的循环次数
         int writeSpinCount = config().getWriteSpinCount();
         do {
+            /**
+             * 从ChannelOutboundBuffer弹出一条消息，判断该消息是否为空，如果空
+             * 说明消息发送数组中所有待发送的消息都已经发送完毕，清除半包标识，然后退出循环。
+             */
+
             Object msg = in.current();
             if (msg == null) {
-                // Wrote all messages.
+                // Wrote all messages
                 clearOpWrite();
                 // Directly return here so incompleteWrite(...) is not called.
                 return;
             }
             writeSpinCount -= doWriteInternal(in, msg);
-        } while (writeSpinCount > 0);
-
+        } while (writeSpinCount > 0);// 发送的消息不为空则继续doWriteInternal
+        // 传入了循环次数
         incompleteWrite(writeSpinCount < 0);
     }
 
@@ -288,7 +300,14 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
 
     protected final void incompleteWrite(boolean setOpWrite) {
         // Did not write completely.
+        // 循环次数大于等于0说明还有没写完的数据。
         if (setOpWrite) {
+            /**
+             * selectionkey的OP-write被设置，那么Selector多路复用器就会不断的轮训
+             * 对应的Channel用于处理没有发送完成的半包消息直到清除
+             * 直到清除SelectionKey的Op-write操作位。
+             * 因此设置了写操作位之后，就不需要自动启动独立的Runnable来负责发送半包消息了
+             */
             setOpWrite();
         } else {
             // It is possible that we have set the write OP, woken up by NIO because the socket is writable, and then
@@ -296,7 +315,10 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
             // writable (as far as we know). We will find out next time we attempt to write if the socket is writable
             // and set the write OP if necessary.
             clearOpWrite();
-
+            /**
+             * 如果没有设置op-write操作位，需要启动独立的Runnable，将其加入到Eventloop中执行，由runnable负责半包消息的发送，
+             * 实现很简单，就是调用flush（）来发送缓冲数组中的消息。
+             */
             // Schedule flush again later so other tasks can be picked up in the meantime
             eventLoop().execute(flushTask);
         }
@@ -305,7 +327,7 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
     /**
      * Write a {@link FileRegion}
      *
-     * @param region        the {@link FileRegion} from which the bytes should be written
+     * @param region the {@link FileRegion} from which the bytes should be written
      * @return amount       the amount of written bytes
      */
     protected abstract long doWriteFileRegion(FileRegion region) throws Exception;
@@ -317,19 +339,25 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
 
     /**
      * Write bytes form the given {@link ByteBuf} to the underlying {@link java.nio.channels.Channel}.
-     * @param buf           the {@link ByteBuf} from which the bytes should be written
+     *
+     * @param buf the {@link ByteBuf} from which the bytes should be written
      * @return amount       the amount of written bytes
      */
     protected abstract int doWriteBytes(ByteBuf buf) throws Exception;
 
+    /**
+     * 设置写操作位
+     */
     protected final void setOpWrite() {
         final SelectionKey key = selectionKey();
         // Check first if the key is still valid as it may be canceled as part of the deregistration
         // from the EventLoop
         // See https://github.com/netty/netty/issues/2104
+        // 键不存在（已取消）则直接返回
         if (!key.isValid()) {
             return;
         }
+        // 获取键原来的操作位
         final int interestOps = key.interestOps();
         if ((interestOps & SelectionKey.OP_WRITE) == 0) {
             key.interestOps(interestOps | SelectionKey.OP_WRITE);
@@ -337,6 +365,11 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
     }
 
     protected final void clearOpWrite() {
+        /**
+         * 从当前Selectionkey中获取网络操作位，然后与selectionkey.OP_WRITE做按位与，如果不等于0
+         * ，说明当前的selectionkey是iswritable的，需要清除写操作位。
+         * 清除方法很简单，就是selectionkey.op_write取非之后与愿操作位按位与操作，清除selectionkey的写操作位。
+         */
         final SelectionKey key = selectionKey();
         // Check first if the key is still valid as it may be canceled as part of the deregistration
         // from the EventLoop

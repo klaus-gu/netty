@@ -67,23 +67,35 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
     private static final AtomicIntegerFieldUpdater<AbstractChannelHandlerContext> HANDLER_STATE_UPDATER =
             AtomicIntegerFieldUpdater.newUpdater(AbstractChannelHandlerContext.class, "handlerState");
 
+
+    /**
+     * 使用HandlerState来标识ChannelHandler的状态
+     */
+
+    /**
+     * Neither {@link ChannelHandler#handlerAdded(ChannelHandlerContext)}
+     * nor {@link ChannelHandler#handlerRemoved(ChannelHandlerContext)} was called.
+     * 初始状态
+     */
+    private static final int INIT = 0;
     /**
      * {@link ChannelHandler#handlerAdded(ChannelHandlerContext)} is about to be called.
+     * 用于标识handler添加的中间状态，表示handler已添加到pipeline链表上，但handlerAdded仍未调用。
+     * 之所以有这个状态，是因为当ordered为false时，此状态的handler也可以处理事件；
+     * ordered为true，意味着EventExecutor需要根据pipeline中已经添加的handler顺序处理事件；
      */
     private static final int ADD_PENDING = 1;
     /**
      * {@link ChannelHandler#handlerAdded(ChannelHandlerContext)} was called.
+     * ChannelHandler的handlerAdded已经被调用，此状态的handler可以处理事件；
      */
     private static final int ADD_COMPLETE = 2;
     /**
      * {@link ChannelHandler#handlerRemoved(ChannelHandlerContext)} was called.
+     * ChannelHandler的handlerRemoved已经被调用，此状态的handler不能再处理事件。
      */
     private static final int REMOVE_COMPLETE = 3;
-    /**
-     * Neither {@link ChannelHandler#handlerAdded(ChannelHandlerContext)}
-     * nor {@link ChannelHandler#handlerRemoved(ChannelHandlerContext)} was called.
-     */
-    private static final int INIT = 0;
+
 
     private final DefaultChannelPipeline pipeline;
     private final String name;
@@ -303,15 +315,15 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
             } catch (Throwable error) {
                 if (logger.isDebugEnabled()) {
                     logger.debug(
-                        "An exception {}" +
-                        "was thrown by a user handler's exceptionCaught() " +
-                        "method while handling the following exception:",
-                        ThrowableUtil.stackTraceToString(error), cause);
+                            "An exception {}" +
+                                    "was thrown by a user handler's exceptionCaught() " +
+                                    "method while handling the following exception:",
+                            ThrowableUtil.stackTraceToString(error), cause);
                 } else if (logger.isWarnEnabled()) {
                     logger.warn(
-                        "An exception '{}' [enable DEBUG level for full stacktrace] " +
-                        "was thrown by a user handler's exceptionCaught() " +
-                        "method while handling the following exception:", error, cause);
+                            "An exception '{}' [enable DEBUG level for full stacktrace] " +
+                                    "was thrown by a user handler's exceptionCaught() " +
+                                    "method while handling the following exception:", error, cause);
                 }
             }
         } else {
@@ -912,7 +924,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
     }
 
     final boolean setAddComplete() {
-        for (;;) {
+        for (; ; ) {
             int oldState = handlerState;
             if (oldState == REMOVE_COMPLETE) {
                 return false;
@@ -926,6 +938,10 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
         }
     }
 
+    /**
+     * 方法setAddPending用于将handlerState从INIT转化为ADD_PENDING ，
+     * 且setAddPending只会在addLast，addFirst，addAfter，addBefore等添加handler的方法中才可能被调用。
+     */
     final void setAddPending() {
         boolean updated = HANDLER_STATE_UPDATER.compareAndSet(this, INIT, ADD_PENDING);
         assert updated; // This should always be true as it MUST be called before setAddComplete() or setRemoved().
@@ -954,7 +970,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
     /**
      * Makes best possible effort to detect if {@link ChannelHandler#handlerAdded(ChannelHandlerContext)} was called
      * yet. If not return {@code false} and if called or could not detect return {@code true}.
-     *
+     * <p>
      * If this method returns {@code false} we will not invoke the {@link ChannelHandler} but just forward the event.
      * This is needed as {@link DefaultChannelPipeline} may already put the {@link ChannelHandler} in the linked-list
      * but not called {@link ChannelHandler#handlerAdded(ChannelHandlerContext)}.
@@ -981,7 +997,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
     }
 
     private static boolean safeExecute(EventExecutor executor, Runnable runnable,
-            ChannelPromise promise, Object msg, boolean lazy) {
+                                       ChannelPromise promise, Object msg, boolean lazy) {
         try {
             if (lazy && executor instanceof AbstractEventExecutor) {
                 ((AbstractEventExecutor) executor).lazyExecute(runnable);
@@ -1020,7 +1036,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
         });
 
         static WriteTask newInstance(AbstractChannelHandlerContext ctx,
-                Object msg, ChannelPromise promise, boolean flush) {
+                                     Object msg, ChannelPromise promise, boolean flush) {
             WriteTask task = RECYCLER.get();
             init(task, ctx, msg, promise, flush);
             return task;

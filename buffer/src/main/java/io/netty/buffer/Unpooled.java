@@ -69,6 +69,8 @@ import java.util.Arrays;
  * between the original data and the copied buffer.  Various copy methods are
  * provided and their name is all {@code copiedBuffer()}.  It is also convenient
  * to use this operation to merge multiple buffers into one buffer.
+ *
+ * 根据上述，暂且认定为这个类适用于创建ByteBuffer的，并且创建各种类型的缓冲区，以及相关的操作。
  */
 public final class Unpooled {
 

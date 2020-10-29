@@ -44,6 +44,8 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Abstract base class for {@link Channel} implementations which use a Selector based approach.
+ *
+ * 主要作用是注册！！！
  */
 public abstract class AbstractNioChannel extends AbstractChannel {
 
@@ -51,6 +53,7 @@ public abstract class AbstractNioChannel extends AbstractChannel {
             InternalLoggerFactory.getInstance(AbstractNioChannel.class);
 
     private final SelectableChannel ch;
+    // 代表JDK SelectionKey的OP_READ
     protected final int readInterestOp;
     volatile SelectionKey selectionKey;
     boolean readPending;
@@ -64,17 +67,24 @@ public abstract class AbstractNioChannel extends AbstractChannel {
     /**
      * The future of the current connection attempt.  If not null, subsequent
      * connection attempts will fail.
+     * 连接操作结果
      */
     private ChannelPromise connectPromise;
+    /**
+     * 连接超时定时器
+     */
     private ScheduledFuture<?> connectTimeoutFuture;
+    /**
+     * 请求通讯地址
+     */
     private SocketAddress requestedRemoteAddress;
 
     /**
      * Create a new instance
      *
-     * @param parent            the parent {@link Channel} by which this instance was created. May be {@code null}
-     * @param ch                the underlying {@link SelectableChannel} on which it operates
-     * @param readInterestOp    the ops to set to receive data from the {@link SelectableChannel}
+     * @param parent         the parent {@link Channel} by which this instance was created. May be {@code null}
+     * @param ch             the underlying {@link SelectableChannel} on which it operates
+     * @param readInterestOp the ops to set to receive data from the {@link SelectableChannel}
      */
     protected AbstractNioChannel(Channel parent, SelectableChannel ch, int readInterestOp) {
         super(parent);
@@ -87,7 +97,7 @@ public abstract class AbstractNioChannel extends AbstractChannel {
                 ch.close();
             } catch (IOException e2) {
                 logger.warn(
-                            "Failed to close a partially initialized socket.", e2);
+                        "Failed to close a partially initialized socket.", e2);
             }
 
             throw new ChannelException("Failed to enter non-blocking mode.", e);
@@ -375,11 +385,28 @@ public abstract class AbstractNioChannel extends AbstractChannel {
     @Override
     protected void doRegister() throws Exception {
         boolean selected = false;
-        for (;;) {
+        for (; ; ) {
             try {
+                /**
+                 * 调用JDK的NIO注册api，将Channel注册进Selector中。
+                 * AbstractNioChannel注册的是0（ops）， 说明对任何事件都不感兴趣，仅仅完成注册操作。
+                 * 注册的时候可以指定附件，后续的Channel接受到网络事件通知时可以从SelectionKey中重新
+                 * 获取之前的附件进行处理，此处将AbstractNioChannel的实现子类自身当作附件注册。
+                 * 如果注册Channel成功，则返回selectionkey，通过selectionKey可以从多路复用起中获取Channel对象
+                 */
+                /**
+                 * JavaChannel（）只是返回了前面定义的{@link SelectableChannel}
+                 */
                 selectionKey = javaChannel().register(eventLoop().unwrappedSelector(), 0, this);
                 return;
             } catch (CancelledKeyException e) {
+                /**
+                 * 如果当前注册返回的selectionKey已经被取消，则抛出CancelledKeyException异常，捕获该异常
+                 * 进行处理。如果第一次处理该异常，调用多路复用器的selectNow（）方法将已经取消的selectionKey
+                 * 从多路复用器中删除。操作成功之后，将selected置为true，说明之前失效的selectionkey已经被删除。
+                 * 继续发起下一轮注册操作，如果成功则退出，如果仍然发生CancelledKeyException异常，说明我们无法
+                 * 删除已经被取消的selectionkey，按理由这种操作不该发生，所以直接抛出异常到上层，由其自行处理。
+                 */
                 if (!selected) {
                     // Force the Selector to select now as the "canceled" SelectionKey may still be
                     // cached and not removed because no Select.select(..) operation was called yet.
@@ -399,6 +426,12 @@ public abstract class AbstractNioChannel extends AbstractChannel {
         eventLoop().cancel(selectionKey());
     }
 
+    /**
+     * 准备读操作之前需要设置网络操作位为读
+     * 设置完之后就可以监听读事件了
+     *
+     * @throws Exception
+     */
     @Override
     protected void doBeginRead() throws Exception {
         // Channel.read() or ChannelHandlerContext.read() was called
@@ -406,10 +439,9 @@ public abstract class AbstractNioChannel extends AbstractChannel {
         if (!selectionKey.isValid()) {
             return;
         }
-
         readPending = true;
-
         final int interestOps = selectionKey.interestOps();
+        // 设置操作位
         if ((interestOps & readInterestOp) == 0) {
             selectionKey.interestOps(interestOps | readInterestOp);
         }
